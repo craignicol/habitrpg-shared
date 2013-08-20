@@ -232,7 +232,7 @@ describe 'Cron', ->
     now = moment().startOf('day').add('h', dayStart-1) #today
     console.log {yesterday: yesterday.format('MM/DD HH:00'), now: now.format('MM/DD HH:00')}
     console.log {diff: Math.abs(moment(yesterday).diff(moment(now), 'days'))}
-    expect(helpers.daysBetween(yesterday, now, dayStart)).to.eql 0
+    expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 0
     now = moment().startOf('day').add('h', dayStart)
     console.log {now: now.format('MM/DD HH:00')}
-    expect(helpers.daysBetween(yesterday, now, dayStart)).to.eql 1
+    expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 1

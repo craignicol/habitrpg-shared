@@ -120,7 +120,7 @@ randomDrop = (user, delta, priority, streak = 0, options={}) ->
     count: 0
   paths['items.lastDrop'] = true
 
-  reachedDropLimit = (helpers.daysSince(user.items.lastDrop.date, user.preferences) is 0) and (user.items.lastDrop.count >= 2)
+  reachedDropLimit = (helpers.daysSince(user.items.lastDrop.date, +new Date) is 0) and (user.items.lastDrop.count >= 2)
   return if reachedDropLimit
 
   # % chance of getting a pet or meat
@@ -355,11 +355,11 @@ obj.cron = (user, options={}) ->
   [paths, now] = [options.paths || {}, +options.now || +new Date]
 
   # New user (!lastCron, lastCron==new) or it got busted somehow, maybe they went to a different timezone
-  if !user.lastCron? or (user.lastCron is 'new') or moment(user.lastCron).isAfter(now)
+  if !user.lastCron? or user.lastCron is 'new' or moment(user.lastCron).isAfter(now)
     user.lastCron = now; paths['lastCron'] = true
     return
 
-  daysMissed = helpers.daysSince user.lastCron, _.defaults(user.preferences, {now})
+  daysMissed = helpers.daysSince user.lastCron, _.defaults({now}, user.preferences)
   return unless daysMissed > 0
 
   user.lastCron = now; paths['lastCron'] = true
