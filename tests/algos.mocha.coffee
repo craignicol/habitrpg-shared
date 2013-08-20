@@ -154,8 +154,8 @@ describe 'Cron', ->
 
     it 'calculates day differences with dayStart properly', ->
       dayStart = 4
-      yesterday = helpers.sod moment().subtract('d', 1), {dayStart}
-      now = helpers.sod +new Date, {dayStart: dayStart-1}
+      yesterday = helpers.startOfDay moment().subtract('d', 1), {dayStart}
+      now = helpers.startOfDay +new Date, {dayStart: dayStart-1}
       expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 0
       now = moment().startOf('day').add('h', dayStart).add('m', 1)
       console.log {yesterday,now}
@@ -165,7 +165,7 @@ describe 'Cron', ->
       #TODO check helpers.isDue()
 
       runCron = (options) ->
-        _.each [240] , (timezoneOffset) -> # test different timezones
+        _.each [240, -120] , (timezoneOffset) -> # test different timezones
           now = helpers.startOfWeek(+new Date, {timezoneOffset}).add('hours',options.currentHour || 0)
           {before,after} = beforeAfter({now, timezoneOffset, daysAgo:1, dayStart:options.dayStart||0, limitOne:'daily'})
           before.dailys[0].repeat = after.dailys[0].repeat = options.repeat if options.repeat

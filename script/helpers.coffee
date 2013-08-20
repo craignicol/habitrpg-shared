@@ -16,7 +16,7 @@ startOfWeek = (timestamp, options={}) ->
     .subtract('m', +timeInZone.format('m'))
     .subtract('s', +timeInZone.format('s'))
 
-sod = (timestamp, options={}) ->
+startOfDay = (timestamp, options={}) ->
   #sanity-check reset-time (is it 24h time?)
   clientTZ = if options.timezoneOffset? then +options.timezoneOffset else moment().zone()
   timeInZone = moment(timestamp).zone(clientTZ)
@@ -33,7 +33,7 @@ dayMapping = {0:'su',1:'m',2:'t',3:'w',4:'th',5:'f',6:'s'}
   Absolute diff between two dates
 ###
 daysSince = (yesterday, options = {}) ->
-  Math.abs sod(yesterday, options).diff(+(options.now or new Date), 'days')
+  Math.abs startOfDay(yesterday, options).diff(+(options.now or new Date), 'days')
 
 ###
   Should the user do this taks on this date, given the task's repeat options and user.preferences.dayStart?
@@ -41,7 +41,7 @@ daysSince = (yesterday, options = {}) ->
 shouldDo = (day, repeat, options={}) ->
   return false unless repeat
   [dayStart,now] = [sanitizeDayStart(options.dayStart), options.now||+new Date]
-  selected = repeat[dayMapping[sod(day, {dayStart}).day()]]
+  selected = repeat[dayMapping[startOfDay(day, {dayStart}).day()]]
   return selected unless moment(day).isSame(now,'d')
   if dayStart <= moment(now).hour() # we're past the dayStart mark, is it due today?
     return selected
@@ -147,7 +147,7 @@ module.exports =
 
   daysSince: daysSince
   startOfWeek: startOfWeek
-  sod: sod
+  startOfDay: startOfDay
 
   shouldDo: shouldDo
 
