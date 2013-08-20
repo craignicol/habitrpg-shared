@@ -2,12 +2,30 @@ moment = require 'moment'
 _ = require 'lodash'
 items = require('./items.coffee')
 
+sanitizeDayStart = (dayStart) ->
+  if (dayStart and 0 <= +dayStart <= 24) then +dayStart else 0
+
+startOfWeek = (timestamp, options={}) ->
+  #sanity-check reset-time (is it 24h time?)
+  clientTZ = if options.timezoneOffset? then +options.timezoneOffset else moment().zone()
+  timeInZone = moment(timestamp).zone(clientTZ)
+  moment(timestamp)
+    # midnight their time (moment().startOf('w') doesn't work with timezones)
+    .subtract('d', +timeInZone.format('d'))
+    .subtract('h', +timeInZone.format('h'))
+    .subtract('m', +timeInZone.format('m'))
+    .subtract('s', +timeInZone.format('s'))
+
 sod = (timestamp, options={}) ->
   #sanity-check reset-time (is it 24h time?)
-  options.dayStart = 0 unless (options.dayStart = +options.dayStart) and (0 <= options.dayStart <= 24)
-  tz = if options.timezoneOffset? then +options.timezoneOffset else moment().zone()
-  moment(timestamp).zone(tz).startOf('day').add('h', options.dayStart)
-  #moment(timestamp).startOf('day').add('h', options.dayStart)
+  clientTZ = if options.timezoneOffset? then +options.timezoneOffset else moment().zone()
+  timeInZone = moment(timestamp).zone(clientTZ)
+  moment(timestamp)
+    # midnight their time (moment().startOf('d') doesn't work with timezones)
+    .subtract('h', +timeInZone.format('h'))
+    .subtract('m', +timeInZone.format('m'))
+    .subtract('s', +timeInZone.format('s'))
+    .add('h', sanitizeDayStart(options.dayStart))
 
 dayMapping = {0:'su',1:'m',2:'t',3:'w',4:'th',5:'f',6:'s'}
 
@@ -22,7 +40,7 @@ daysSince = (yesterday, options = {}) ->
 ###
 shouldDo = (day, repeat, options={}) ->
   return false unless repeat
-  [dayStart,now] = [options.dayStart||0, options.now||+new Date]
+  [dayStart,now] = [sanitizeDayStart(options.dayStart), options.now||+new Date]
   selected = repeat[dayMapping[sod(day, {dayStart}).day()]]
   return selected unless moment(day).isSame(now,'d')
   if dayStart <= moment(now).hour() # we're past the dayStart mark, is it due today?
@@ -128,6 +146,8 @@ module.exports =
     _.reduce path.split('.'), ((curr, next) -> curr[next]), obj
 
   daysSince: daysSince
+  startOfWeek: startOfWeek
+  sod: sod
 
   shouldDo: shouldDo
 

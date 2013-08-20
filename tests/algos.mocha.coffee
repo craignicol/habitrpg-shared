@@ -16,6 +16,7 @@ beforeAfter = (options={}) ->
   user = helpers.newUser()
   [before, after] = [_.cloneDeep(user), _.cloneDeep(user)]
   before.preferences.dayStart = after.preferences.dayStart = options.dayStart if options.dayStart
+  before.preferences.timezoneOffset = after.preferences.timezoneOffset = (options.timezoneOffset or moment().zone())
   if options.limitOne
     before["#{options.limitOne}s"] = [before["#{options.limitOne}s"][0]]
     after["#{options.limitOne}s"] = [after["#{options.limitOne}s"][0]]
@@ -151,22 +152,32 @@ describe 'Cron', ->
 
   describe 'dailies', ->
 
+    it 'calculates day differences with dayStart properly', ->
+      dayStart = 4
+      yesterday = helpers.sod moment().subtract('d', 1), {dayStart}
+      now = helpers.sod +new Date, {dayStart: dayStart-1}
+      expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 0
+      now = moment().startOf('day').add('h', dayStart).add('m', 1)
+      console.log {yesterday,now}
+      expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 1
+
     describe 'new day', ->
       #TODO check helpers.isDue()
 
       runCron = (options) ->
-        now = moment().startOf('week').add('hours',options.currentHour || 0)
-        {before,after} = beforeAfter({now, daysAgo:1, dayStart:options.dayStart||0, limitOne:'daily'})
-        before.dailys[0].repeat = after.dailys[0].repeat = options.repeat if options.repeat
-        before.dailys[0].streak = after.dailys[0].streak = 10
-        before.dailys[0].completed = after.dailys[0].completed = true if options.checked
-        expect(helpers.shouldDo(now, options.repeat, {dayStart:options.dayStart,now})).to.be.ok() if options.shouldDo
-        algos.cron(after,{now})
-        switch options.expect
-          when 'losePoints' then expectLostPoints(before,after,'daily')
-          when 'noChange' then expectNoChange(before,after)
-          when 'noDamage' then expectDayResetNoDamage(before,after)
-        {before,after}
+        _.each [240] , (timezoneOffset) -> # test different timezones
+          now = helpers.startOfWeek(+new Date, {timezoneOffset}).add('hours',options.currentHour || 0)
+          {before,after} = beforeAfter({now, timezoneOffset, daysAgo:1, dayStart:options.dayStart||0, limitOne:'daily'})
+          before.dailys[0].repeat = after.dailys[0].repeat = options.repeat if options.repeat
+          before.dailys[0].streak = after.dailys[0].streak = 10
+          before.dailys[0].completed = after.dailys[0].completed = true if options.checked
+          expect(helpers.shouldDo(now, options.repeat, {timezoneOffset, dayStart:options.dayStart, now})).to.be.ok() if options.shouldDo
+          algos.cron(after,{now})
+          switch options.expect
+            when 'losePoints' then expectLostPoints(before,after,'daily')
+            when 'noChange' then expectNoChange(before,after)
+            when 'noDamage' then expectDayResetNoDamage(before,after)
+          {before,after}
 
       cronMatrix =
         steps:
@@ -225,14 +236,3 @@ describe 'Cron', ->
 
     it '3 day missed, only 1 due'
     it '3 day missed, only 1 due, not day start yet'
-
-  it 'calculates day differences with dayStart properly', ->
-    dayStart = 4
-    yesterday = moment().subtract('d', 1).add('h', dayStart)
-    now = moment().startOf('day').add('h', dayStart-1) #today
-    console.log {yesterday: yesterday.format('MM/DD HH:00'), now: now.format('MM/DD HH:00')}
-    console.log {diff: Math.abs(moment(yesterday).diff(moment(now), 'days'))}
-    expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 0
-    now = moment().startOf('day').add('h', dayStart)
-    console.log {now: now.format('MM/DD HH:00')}
-    expect(helpers.daysSince(yesterday, {now, dayStart})).to.eql 1
