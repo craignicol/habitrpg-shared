@@ -66,7 +66,7 @@ expectDayResetNoDamage = (b,a) ->
 ###### Specs ######
 
 describe 'User', ->
-  it 'sets correct user defaults', ->
+  it.skip 'sets correct user defaults', ->
     user = helpers.newUser()
     expect(user.stats).to.eql { gp: 0, exp: 0, lvl: 1, hp: 50 }
     expect(user.party).to.eql { invitation: null }

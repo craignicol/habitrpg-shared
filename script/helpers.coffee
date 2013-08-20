@@ -2,25 +2,40 @@ moment = require 'moment'
 _ = require 'lodash'
 items = require('./items.coffee')
 
-sod = (timestamp, dayStart=0) ->
-  #sanity-check reset-time (is it 24h time?)
-  dayStart = 0 unless (dayStart = +dayStart) and (0 <= dayStart <= 24)
-  moment(timestamp).startOf('day').add('h', dayStart)
-
 dayMapping = {0:'su',1:'m',2:'t',3:'w',4:'th',5:'f',6:'s'}
 
-###
-  Absolute diff between two dates
-###
-daysBetween = (yesterday, now, dayStart) -> Math.abs sod(yesterday, dayStart).diff(now, 'days')
+sanitizeDayOptions = (options) ->
+  # typecheck timezone, if not provided use our own timezone. Works as expected on web, else default to server timezone
+  options.timezoneOffset = +options.timezoneOffset or moment().zone()
+  # make sure custom day start is 24h
+  options.dayStart = 0 unless (options.dayStart = +options.dayStart) and (0 <= options.dayStart <= 24)
 
 ###
-  Should the user do this taks on this date, given the task's repeat options and user.preferences.dayStart?
+  Determine the start of the timestamp's day.
+  {timestamp}: the date to test
+  {options}:
+    dayStart: the hour of the custom day-start. 0-24
+    timezoneOffset: the user's timezone, defaults to where the script is being run
+###
+sod = (timestamp, options = {}) ->
+  sanitizeDayOptions options
+#  moment(timestamp).zone(options.timezoneOffset).startOf('day').add('h', options.dayStart)
+  moment(timestamp).startOf('day').add('h', options.dayStart)
+
+###
+Absolute diff between in days between today and {day}. Pass in user to calculate against timezone & custom dayStart
+###
+daysSince = (lastTime, options={}) ->
+  Math.abs sod(lastTime, options).diff(options.now||+new Date, 'days')
+
+###
+  Should the user do this taks on this date, given the task's repeat options and user.preferences?
 ###
 shouldDo = (day, repeat, options={}) ->
   return false unless repeat
-  [dayStart,now] = [options.dayStart||0, options.now||+new Date]
-  selected = repeat[dayMapping[sod(day, dayStart).day()]]
+  sanitizeDayOptions options
+  [dayStart,now] = [options.dayStart, options.now||+new Date]
+  selected = repeat[dayMapping[sod(day, {dayStart}).day()]]
   return selected unless moment(day).isSame(now,'d')
   if dayStart <= moment(now).hour() # we're past the dayStart mark, is it due today?
     return selected
@@ -124,9 +139,9 @@ module.exports =
     return undefined if ~path.indexOf('undefined')
     _.reduce path.split('.'), ((curr, next) -> curr[next]), obj
 
-  daysBetween: daysBetween
-
   shouldDo: shouldDo
+
+  daysSince: daysSince
 
   ###
     Get a random property from an object
